@@ -3,7 +3,6 @@ Run: npm i axios cheerio
 
 before running the code
 */
-
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
@@ -14,33 +13,30 @@ axios.get('https://forecast.weather.gov/MapClick.php?lat=34.09976000000006&lon=-
     // Create a cheerio object to parse the HTML content
     const $ = cheerio.load(response.data);
 
-    // Find the section containing the seven-day forecast
-    const week = $('#seven-day-forecast-body');
-
     // Find all the forecast items within the week section
-    const items = week.find('.tombstone-container');
+    const items = $('#seven-day-forecast-body .tombstone-container');
 
     // Extract the period names, short descriptions, and temperatures from each forecast item
-    const periodNames = items.find('.period-name').map((index, element) => $(element).text()).get();
-    const shortDescriptions = items.find('.short-desc').map((index, element) => $(element).text()).get();
-    const temperatures = items.find('.temp').map((index, element) => $(element).text()).get();
+    const weatherData = [];
+    items.each((index, element) => {
+      const periodName = $(element).find('.period-name').text();
+      const shortDescription = $(element).find('.short-desc').text();
+      const temperature = $(element).find('.temp').text();
+      weatherData.push([periodName, shortDescription, temperature]);
+    });
 
-    // Create an array of objects to store the extracted data
-    const weatherStuff = periodNames.map((period, index) => ({
-      period,
-      short_descriptions: shortDescriptions[index],
-      temperatures: temperatures[index]
-    }));
+    // Create a string to store the extracted data
+    let csvData = 'period,short_descriptions,temperatures\n';
+    weatherData.forEach((data) => {
+      csvData += `${data[0]},${data[1]},${data[2]}\n`;
+    });
 
-    // Convert the array of objects to JSON
-    const weatherStuffJSON = JSON.stringify(weatherStuff);
+    // Save the data to a CSV file
+    fs.writeFileSync('result.csv', csvData);
 
-    // Save the JSON to a file
-    fs.writeFileSync('result.json', weatherStuffJSON);
-
-    // Display the JSON
-    console.log(weatherStuffJSON);
+    // Display the data
+    console.table(weatherData);
   })
   .catch((error) => {
-    console.log(error);
+    console.error(error);
   });
